@@ -48,7 +48,11 @@ pub mod arch;
 
 #[cfg(feature = "panic-handler")]
 #[panic_handler]
-fn panic_handler(info: &core::panic::PanicInfo) -> ! {
+fn __panic_handler(info: &core::panic::PanicInfo) -> !{
+    panic_handler(info)
+}
+
+pub fn panic_handler(info: &core::panic::PanicInfo) -> ! {
     #[cfg(feature = "colors")]
     set_color_code(RED);
 
@@ -114,6 +118,11 @@ fn panic_handler(info: &core::panic::PanicInfo) -> ! {
 #[no_mangle]
 #[link_section = ".rwtext"]
 unsafe fn __user_exception(cause: arch::ExceptionCause, context: arch::Context) {
+    user_exception(cause, context)
+}
+
+#[cfg(target_arch = "xtensa")]
+pub fn user_exception(cause: arch::ExceptionCause, context: arch::Context) {
     #[cfg(feature = "colors")]
     set_color_code(RED);
 
@@ -144,7 +153,12 @@ unsafe fn __user_exception(cause: arch::ExceptionCause, context: arch::Context) 
 
 #[cfg(all(feature = "exception-handler", target_arch = "riscv32"))]
 #[export_name = "ExceptionHandler"]
-fn exception_handler(context: &arch::TrapFrame) -> ! {
+fn __exception_handler(context: &arch::TrapFrame) -> ! {
+    exception_handler(context)
+}
+
+#[cfg(target_arch = "riscv32")]
+pub fn exception_handler(context: &arch::TrapFrame) -> ! {
     let mepc = context.pc;
     let code = context.mcause & 0xff;
     let mtval = context.mtval;
@@ -198,7 +212,7 @@ fn exception_handler(context: &arch::TrapFrame) -> ! {
             if let Some(addr) = e {
                 #[cfg(all(feature = "colors", feature = "println"))]
                 println!("{}0x{:x}", RED, addr - crate::arch::RA_OFFSET);
-    
+
                 #[cfg(not(all(feature = "colors", feature = "println")))]
                 println!("0x{:x}", addr - crate::arch::RA_OFFSET);
             }
